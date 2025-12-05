@@ -310,6 +310,18 @@
                         </div>
                     </div>
                 </div>
+
+                {% if detalhes.ultimo_discursante %}
+                <div style="margin-top: 1.5rem;">
+                    <button type="button"
+                                data-discursante='{{ detalhes.ultimo_discursante | tojson }}'
+                                data-template='3'
+                                class="btn-action convidar-btn"
+                                style="background:#25D366; padding:0.45rem 0.7rem; min-width:unset; font-size:.95rem; white-space:nowrap;">
+                            <i class="fab fa-whatsapp"></i> Convidar
+                    </button>
+                </div>
+                {% endif %}
             </div>
         </div>
 
