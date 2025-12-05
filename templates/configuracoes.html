@@ -84,20 +84,25 @@
             <input type="text" id="nome_ala" name="nome_ala" value="{{ unidade.nome or '' }}" placeholder="Ex: Ala Criciúma 1">
           </div>
           <div>
-            <label for="bispo"><i class="fas fa-user-tie"></i> Bispo:</label>
-            <input type="text" id="bispo" name="bispo" value="{{ unidade.bispo or '' }}" placeholder="Nome do bispo">
-          </div>
-          <div>
-            <label for="conselheiros"><i class="fas fa-users"></i> Conselheiros:</label>
-            <input type="text" id="conselheiros" name="conselheiros" value="{{ unidade.conselheiros or '' }}" placeholder="Nomes dos conselheiros">
-          </div>
-          <div>
             <label for="horario"><i class="fas fa-clock"></i> Horário da Reunião:</label>
             <input type="text" id="horario" name="horario" value="{{ unidade.horario or '' }}" placeholder="Ex: 09:30 - 10:30">
           </div>
           <div>
             <label for="estaca"><i class="fas fa-map-marker-alt"></i> Estaca:</label>
-            <input type="text" id="estaca" name="estaca" value="{{ unidade.estaca or 'Criciúma' }}">
+            <input type="hidden" name="estaca" value="{{ unidade.estaca or 'Criciúma' }}">
+            <input type="text" id="estaca_display" value="{{ unidade.estaca or 'Criciúma' }}" disabled>
+          </div>
+          <div>
+            <label for="bispo"><i class="fas fa-user-tie"></i> Bispo:</label>
+            <input type="text" id="bispo" name="bispo" value="{{ unidade.bispo or '' }}" placeholder="Nome do bispo">
+          </div>
+          <div>
+            <label for="primeiro_conselheiro"><i class="fas fa-user-friends"></i> Primeiro Conselheiro:</label>
+            <input type="text" id="primeiro_conselheiro" name="primeiro_conselheiro" value="{{ unidade.primeiro_conselheiro or '' }}" placeholder="Nome do primeiro conselheiro">
+          </div>
+          <div>
+            <label for="segundo_conselheiro"><i class="fas fa-user-friends"></i> Segundo Conselheiro:</label>
+            <input type="text" id="segundo_conselheiro" name="segundo_conselheiro" value="{{ unidade.segundo_conselheiro or '' }}" placeholder="Nome do segundo conselheiro">
           </div>
         </div>
         <button type="submit" class="btn btn-primary">

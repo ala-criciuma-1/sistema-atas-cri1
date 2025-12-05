@@ -4,3 +4,4 @@ python-socketio==5.8.0
 eventlet==0.33.3
 reportlab==4.0.4
 gunicorn==21.2.0
+weasyprint==67.0

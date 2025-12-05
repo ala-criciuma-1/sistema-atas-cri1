@@ -78,11 +78,67 @@
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
               <div>
                 <label style="display:block; font-size:0.9rem; margin-bottom:0.3rem;">Presidido por</label>
-                <input type="text" name="presidido" value="{{ dados.presidido or '' }}">
+
+                {% set presidido_is_outro = dados.presidido and dados.presidido not in [estaca.presidente|default(''), estaca.primeiro_conselheiro|default(''), estaca.segundo_conselheiro|default(''), unidade.bispo|default(''), unidade.primeiro_conselheiro|default(''), unidade.segundo_conselheiro|default('')] %}
+
+                <select id="presidido_select" style="min-width:220px;">
+                  {% if estaca.presidente %}
+                  <optgroup label="Presidente Estaca">
+                    <option value="{{ estaca.presidente }}" {% if dados.presidido == estaca.presidente %}selected{% endif %}>{{ estaca.presidente }}</option>
+                  </optgroup>
+                  {% endif %}
+
+                  <optgroup label="Conselheiros da Estaca">
+                    {% if estaca.primeiro_conselheiro %}<option value="{{ estaca.primeiro_conselheiro }}" {% if dados.presidido == estaca.primeiro_conselheiro %}selected{% endif %}>{{ estaca.primeiro_conselheiro }}</option>{% endif %}
+                    {% if estaca.segundo_conselheiro %}<option value="{{ estaca.segundo_conselheiro }}" {% if dados.presidido == estaca.segundo_conselheiro %}selected{% endif %}>{{ estaca.segundo_conselheiro }}</option>{% endif %}
+                  </optgroup>
+
+                  <optgroup label="Bispo Unidade">
+                    {% if unidade.bispo %}<option value="{{ unidade.bispo }}" {% if dados.presidido == unidade.bispo %}selected{% endif %}>{{ unidade.bispo }}</option>{% endif %}
+                  </optgroup>
+                  
+                  <optgroup label="Conselheiros da Unidade">
+                    {% if unidade.primeiro_conselheiro %}<option value="{{ unidade.primeiro_conselheiro }}" {% if dados.presidido == unidade.primeiro_conselheiro %}selected{% endif %}>{{ unidade.primeiro_conselheiro }}</option>{% endif %}
+                    {% if unidade.segundo_conselheiro %}<option value="{{ unidade.segundo_conselheiro }}" {% if dados.presidido == unidade.segundo_conselheiro %}selected{% endif %}>{{ unidade.segundo_conselheiro }}</option>{% endif %}
+                  </optgroup>
+
+                  <option value="__outro__" {% if presidido_is_outro %}selected{% endif %}>Outro...</option>
+                </select>
+
+                <input type="text" id="presidido_outro" placeholder="Digite o nome se 'Outro'..." style="display:none; margin-top:0.5rem; width:100%; padding:0.5rem;">
+                <input type="hidden" name="presidido" id="presidido_hidden" value="{{ dados.presidido or '' }}">
               </div>
               <div>
                 <label style="display:block; font-size:0.9rem; margin-bottom:0.3rem;">Dirigido por</label>
-                <input type="text" name="dirigido" value="{{ dados.dirigido or '' }}">
+
+                {% set dirigido_is_outro = dados.dirigido and dados.dirigido not in [estaca.presidente|default(''), estaca.primeiro_conselheiro|default(''), estaca.segundo_conselheiro|default(''), unidade.bispo|default(''), unidade.primeiro_conselheiro|default(''), unidade.segundo_conselheiro|default('')] %}
+
+                <select id="dirigido_select" style="min-width:220px;">
+                  {% if estaca.presidente %}
+                  <optgroup label="Presidente Estaca">
+                    <option value="{{ estaca.presidente }}" {% if dados.dirigido == estaca.presidente %}selected{% endif %}>{{ estaca.presidente }}</option>
+                  </optgroup>
+                  {% endif %}
+
+                  <optgroup label="Conselheiros da Estaca">
+                    {% if estaca.primeiro_conselheiro %}<option value="{{ estaca.primeiro_conselheiro }}" {% if dados.dirigido == estaca.primeiro_conselheiro %}selected{% endif %}>{{ estaca.primeiro_conselheiro }}</option>{% endif %}
+                    {% if estaca.segundo_conselheiro %}<option value="{{ estaca.segundo_conselheiro }}" {% if dados.dirigido == estaca.segundo_conselheiro %}selected{% endif %}>{{ estaca.segundo_conselheiro }}</option>{% endif %}
+                  </optgroup>
+
+                  <optgroup label="Bispo Unidade">
+                    {% if unidade.bispo %}<option value="{{ unidade.bispo }}" {% if dados.dirigido == unidade.bispo %}selected{% endif %}>{{ unidade.bispo }}</option>{% endif %}
+                  </optgroup>
+
+                  <optgroup label="Conselheiros da Unidade">
+                    {% if unidade.primeiro_conselheiro %}<option value="{{ unidade.primeiro_conselheiro }}" {% if dados.dirigido == unidade.primeiro_conselheiro %}selected{% endif %}>{{ unidade.primeiro_conselheiro }}</option>{% endif %}
+                    {% if unidade.segundo_conselheiro %}<option value="{{ unidade.segundo_conselheiro }}" {% if dados.dirigido == unidade.segundo_conselheiro %}selected{% endif %}>{{ unidade.segundo_conselheiro }}</option>{% endif %}
+                  </optgroup>
+
+                  <option value="__outro__" {% if dirigido_is_outro %}selected{% endif %}>Outro...</option>
+                </select>
+
+                <input type="text" id="dirigido_outro" placeholder="Digite o nome se 'Outro'..." style="display:none; margin-top:0.5rem; width:100%; padding:0.5rem;">
+                <input type="hidden" name="dirigido" id="dirigido_hidden" value="{{ dados.dirigido or '' }}">
               </div>
               <div>
                 <label style="display:block; font-size:0.9rem; margin-bottom:0.3rem;">Como recepcionista(s)</label>
@@ -411,6 +467,213 @@ document.addEventListener('DOMContentLoaded', function() {
       icon.textContent = '▶';
     }
   }
+});
+</script>
+
+<script>
+(function(){
+  // Se o markup novo (selects com esses ids) já existe, não rodamos o script antigo.
+  if (document.getElementById('presidido_select') || document.getElementById('dirigido_select')) {
+    return;
+  }
+  // Se quiser reaproveitar o script antigo com IDs diferentes, implemente aqui.
+})();
+</script>
+
+<script>
+(function(){
+  const estaca = {{ estaca|default({})|tojson }};
+  const unidade = {{ unidade|default({})|tojson }};
+  const dados_presidido = "{{ dados.presidido|default('')|escape }}";
+  const dados_dirigido = "{{ dados.dirigido|default('')|escape }}";
+
+  function setHidden(id, v){ const h = document.getElementById(id); if(h) h.value = v || ''; }
+
+  function buildOptions(arr){
+    if(!arr || !Array.isArray(arr)) return [];
+    return arr.filter(Boolean).map(v=>({value:v,label:v}));
+  }
+
+  function createSelect(opts, id){
+    const sel = document.createElement('select');
+    sel.id = id;
+    sel.style.width = '100%';
+    sel.style.padding = '0.45rem';
+    const empty = document.createElement('option'); empty.value=''; empty.textContent='-- selecione --';
+    sel.appendChild(empty);
+    opts.forEach(o=>{ const opt=document.createElement('option'); opt.value=o.value; opt.textContent=o.label; sel.appendChild(opt); });
+    return sel;
+  }
+
+  function showControl(type, targetPrefix){
+    const controls = document.getElementById(targetPrefix + '_controls');
+    const hiddenId = targetPrefix + '_hidden';
+    controls.innerHTML = '';
+
+    if(type === 'presidente_estaca'){
+      const input = document.createElement('input'); input.type='text'; input.disabled=true; input.value = estaca && estaca.presidente ? estaca.presidente : '';
+      input.style.width='100%'; input.style.padding='0.45rem';
+      controls.appendChild(input);
+      setHidden(hiddenId, input.value);
+    } else if(type === 'conselheiro_estaca'){
+      const opts = buildOptions([ estaca && estaca.primeiro_conselheiro, estaca && estaca.segundo_conselheiro ]);
+      const sel = createSelect(opts, targetPrefix + '_conselheiro_estaca');
+      sel.onchange = ()=> setHidden(hiddenId, sel.value);
+      controls.appendChild(sel);
+      const hv = document.getElementById(hiddenId).value;
+      if(hv) sel.value = hv;
+    } else if(type === 'bispo_unidade'){
+      const input = document.createElement('input'); input.type='text'; input.disabled=true; input.value = unidade && unidade.bispo ? unidade.bispo : '';
+      input.style.width='100%'; input.style.padding='0.45rem';
+      controls.appendChild(input);
+      setHidden(hiddenId, input.value);
+    } else if(type === 'conselheiro_unidade'){
+      const opts = buildOptions([ unidade && unidade.primeiro_conselheiro, unidade && unidade.segundo_conselheiro ]);
+      const sel = createSelect(opts, targetPrefix + '_conselheiro_unidade');
+      sel.onchange = ()=> setHidden(hiddenId, sel.value);
+      controls.appendChild(sel);
+      const hv = document.getElementById(hiddenId).value;
+      if(hv) sel.value = hv;
+    } else { // outro
+      const input = document.createElement('input'); input.type='text'; input.placeholder='Digite o nome...';
+      input.style.width='100%'; input.style.padding='0.45rem';
+      input.oninput = ()=> setHidden(hiddenId, input.value);
+      controls.appendChild(input);
+      const hv = document.getElementById(hiddenId).value;
+      if(hv) input.value = hv;
+    }
+  }
+
+  function detectSourceByValue(value){
+    if(!value) return null;
+    if(estaca && estaca.presidente && estaca.presidente === value) return 'presidente_estaca';
+    if(estaca && estaca.primeiro_conselheiro && estaca.primeiro_conselheiro === value) return 'conselheiro_estaca';
+    if(estaca && estaca.segundo_conselheiro && estaca.segundo_conselheiro === value) return 'conselheiro_estaca';
+    if(unidade && unidade.bispo && unidade.bispo === value) return 'bispo_unidade';
+    if(unidade && unidade.primeiro_conselheiro && unidade.primeiro_conselheiro === value) return 'conselheiro_unidade';
+    if(unidade && unidade.segundo_conselheiro && unidade.segundo_conselheiro === value) return 'conselheiro_unidade';
+    return 'outro';
+  }
+
+  function setSourceOptionText(selectEl){
+    if(!selectEl) return;
+    const optPres = selectEl.querySelector('option[value="presidente_estaca"]');
+    const optConsEst = selectEl.querySelector('option[value="conselheiro_estaca"]');
+    const optBispo = selectEl.querySelector('option[value="bispo_unidade"]');
+    const optConsUn = selectEl.querySelector('option[value="conselheiro_unidade"]');
+
+    if(optPres) optPres.textContent = (estaca && estaca.presidente) ? (estaca.presidente) : 'Presidente de Estaca';
+    if(optBispo) optBispo.textContent = (unidade && unidade.bispo) ? (unidade.bispo) : 'Bispo da Unidade';
+
+    // conselheiros: mostrar lista ou rótulo
+    const consEstNames = [estaca && estaca.primeiro_conselheiro, estaca && estaca.segundo_conselheiro].filter(Boolean);
+    if(optConsEst) optConsEst.textContent = consEstNames.length ? ('Conselheiros: ' + consEstNames.join(' / ')) : 'Conselheiro da Estaca';
+
+    const consUnNames = [unidade && unidade.primeiro_conselheiro, unidade && unidade.segundo_conselheiro].filter(Boolean);
+    if(optConsUn) optConsUn.textContent = consUnNames.length ? ('Conselheiros: ' + consUnNames.join(' / ')) : 'Conselheiro da Unidade';
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    const srcPres = document.getElementById('presidido_source');
+    const srcDir = document.getElementById('dirigido_source');
+
+    // Atualiza os textos das opções para mostrar nomes reais quando disponíveis
+    setSourceOptionText(srcPres);
+    setSourceOptionText(srcDir);
+
+    // tentativa de auto seleção com base no valor salvo
+    const autoPres = detectSourceByValue(dados_presidido);
+    const autoDir = detectSourceByValue(dados_dirigido);
+
+    if(autoPres) { srcPres.value = autoPres; showControl(autoPres, 'presidido'); }
+    else { showControl(srcPres.value, 'presidido'); }
+
+    if(autoDir) { srcDir.value = autoDir; showControl(autoDir, 'dirigido'); }
+    else { showControl(srcDir.value, 'dirigido'); }
+
+    // listeners
+    srcPres.addEventListener('change', ()=> showControl(srcPres.value, 'presidido'));
+    srcDir.addEventListener('change', ()=> showControl(srcDir.value, 'dirigido'));
+  });
+})();
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // PRESIDIDO
+  const presSelect = document.getElementById('presidido_select');
+  const presHidden = document.getElementById('presidido_hidden');
+  const presOutro = document.getElementById('presidido_outro');
+
+  function syncPresidido() {
+    const v = presSelect.value;
+    if (v === '__outro__') {
+      presOutro.style.display = 'block';
+      presHidden.value = presOutro.value || '';
+    } else {
+      presOutro.style.display = 'none';
+      presHidden.value = v;
+    }
+  }
+
+  presSelect && presSelect.addEventListener('change', syncPresidido);
+  presOutro && presOutro.addEventListener('input', () => presHidden.value = presOutro.value);
+
+  // inicialização: se o hidden tem valor que não está entre as opções, mostrar outro
+  (function initPres(){
+    const hv = presHidden.value || '';
+    let found = false;
+    if (presSelect) {
+      for (let i = 0; i < presSelect.options.length; i++) {
+        if (presSelect.options[i].value === hv) { presSelect.selectedIndex = i; found = true; break; }
+      }
+      if (!found && hv) {
+        presSelect.value = '__outro__';
+        presOutro.style.display = 'block';
+        presOutro.value = hv;
+        presHidden.value = hv;
+      } else {
+        syncPresidido();
+      }
+    }
+  })();
+
+  // DIRIGIDO
+  const dirSelect = document.getElementById('dirigido_select');
+  const dirHidden = document.getElementById('dirigido_hidden');
+  const dirOutro = document.getElementById('dirigido_outro');
+
+  function syncDirigido() {
+    const v = dirSelect.value;
+    if (v === '__outro__') {
+      dirOutro.style.display = 'block';
+      dirHidden.value = dirOutro.value || '';
+    } else {
+      dirOutro.style.display = 'none';
+      dirHidden.value = v;
+    }
+  }
+
+  dirSelect && dirSelect.addEventListener('change', syncDirigido);
+  dirOutro && dirOutro.addEventListener('input', () => dirHidden.value = dirOutro.value);
+
+  (function initDir(){
+    const hv = dirHidden.value || '';
+    let found = false;
+    if (dirSelect) {
+      for (let i = 0; i < dirSelect.options.length; i++) {
+        if (dirSelect.options[i].value === hv) { dirSelect.selectedIndex = i; found = true; break; }
+      }
+      if (!found && hv) {
+        dirSelect.value = '__outro__';
+        dirOutro.style.display = 'block';
+        dirOutro.value = hv;
+        dirHidden.value = hv;
+      } else {
+        syncDirigido();
+      }
+    }
+  })();
 });
 </script>
 
