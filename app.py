@@ -486,6 +486,50 @@ def get_temas_recentes():
     conn.close()
     return temas_formatados[:10]
 
+def get_hinos_recentes():
+    """Busca hinos tocados nos últimos 2 meses, agrupados por data."""
+    conn = get_db()
+    
+    # Data de 60 dias atrás (aproximadamente 2 meses)
+    dois_meses_atras = (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d")
+    
+    # Selecionar data e todos os campos de hino
+    hinos_recentes_raw = conn.execute("""
+        SELECT a.data, s.hinos, s.hino_sacramental, s.hino_intermediario
+        FROM sacramental s
+        JOIN atas a ON s.ata_id = a.id
+        WHERE date(a.data) >= date(?)
+          AND a.tipo = 'sacramental'
+          AND a.ala_id = ?
+        ORDER BY a.data DESC
+        LIMIT 10
+    """, (dois_meses_atras, session['user_id'])).fetchall()
+
+    hinos_por_data = {}
+
+    for row in hinos_recentes_raw:
+        data_obj = datetime.strptime(row['data'], "%Y-%m-%d")
+        data_formatada = data_obj.strftime("%d/%m/%Y")
+
+        hinos_lista = []
+
+        # Adiciona Hinos de Abertura e Encerramento (coluna 'hinos' é um JSON array [abertura, encerramento])
+        try:
+            hinos_json = json.loads(row['hinos'] or '[]')
+            if len(hinos_json) > 0 and hinos_json[0] and hinos_json[0].strip(): hinos_lista.append({'tipo': 'Abertura', 'nome': hinos_json[0].strip()})
+            if len(hinos_json) > 1 and hinos_json[1] and hinos_json[1].strip(): hinos_lista.append({'tipo': 'Encerramento', 'nome': hinos_json[1].strip()})
+        except json.JSONDecodeError: pass
+
+        # Adiciona Hino Sacramental e Intermediário
+        if row['hino_sacramental'] and row['hino_sacramental'].strip(): hinos_lista.append({'tipo': 'Sacramental', 'nome': row['hino_sacramental'].strip()})
+        if row['hino_intermediario'] and row['hino_intermediario'].strip(): hinos_lista.append({'tipo': 'Intermediário', 'nome': row['hino_intermediario'].strip()})
+
+        if hinos_lista and data_formatada not in hinos_por_data:
+            hinos_por_data[data_formatada] = {'data': data_formatada, 'hinos': hinos_lista}
+            
+    conn.close()
+    return list(hinos_por_data.values())[:10]
+
 # Rota de Login de Usuário
 @app.route('/', methods=['GET', 'POST'])
 def login():
@@ -1008,15 +1052,15 @@ def form_ata():
         primeiro_domingo = min([d for d in range(1, 8) if calendar.weekday(dt.year, dt.month, d) == 6])
         is_primeiro_domingo = dt.day == primeiro_domingo
         
-        # Buscar discursantes recentes apenas para sacramental (apenas em modo criação)
+
         discursantes_recentes = get_discursantes_recentes() if not editar else []
-        
-        # NOVO: Buscar temas recentes
         temas_recentes = get_temas_recentes() if not editar else []
+        hinos_recentes = get_hinos_recentes() if not editar else []
         
         conn = get_db()
         unidade_row = conn.execute("SELECT * FROM unidades WHERE ala_id = ?", (session['user_id'],)).fetchone()
         estaca_row = None
+
         if unidade_row and unidade_row['estaca_id']:
             estaca_row = conn.execute("SELECT * FROM estacas WHERE id = ?", (unidade_row['estaca_id'],)).fetchone()
 
@@ -1029,7 +1073,8 @@ def form_ata():
                              editar=editar, 
                              dados=dados_existentes,
                              discursantes_recentes=discursantes_recentes,
-                             temas_recentes=temas_recentes,  # ← ADICIONAR AQUI
+                             temas_recentes=temas_recentes,
+                             hinos_recentes=hinos_recentes,
                              unidade=unidade,
                              estaca=estaca)
     elif tipo == "batismo":
@@ -1306,6 +1351,62 @@ def reverse_date_format(value):
         # Reverte ordem: [2]DD, [1]MM, [0]AAAA
         return f"{parts[2]}/{parts[1]}/{parts[0]}"
     return value
+
+@app.route('/deletar_ata', methods=['POST'])
+def deletar_ata():
+    """Rota para deletar uma ata e seus detalhes relacionados."""
+    # Garante que o usuário está logado
+    if 'user_id' not in session:
+        flash('Você precisa estar logado para realizar esta ação.', 'error')
+        return redirect(url_for('login'))
+
+    ata_id = request.form.get('ata_id', type=int)
+    ala_id = session['user_id']
+
+    if not ata_id:
+        flash('ID da ata não fornecido.', 'error')
+        # CORREÇÃO: O endpoint correto é 'listar_todas_atas'
+        return redirect(url_for('listar_todas_atas'))
+
+    conn = get_db()
+    
+    # 1. Obter o tipo da ata para saber qual tabela de detalhes deletar
+    ata_info = conn.execute("SELECT tipo FROM atas WHERE id = ? AND ala_id = ?", (ata_id, ala_id)).fetchone()
+
+    if not ata_info:
+        flash('Ata não encontrada ou você não tem permissão para deletá-la.', 'error')
+        conn.close()
+        # CORREÇÃO: O endpoint correto é 'listar_todas_atas'
+        return redirect(url_for('listar_todas_atas'))
+
+    ata_tipo = ata_info['tipo']
+
+    try:
+        # Inicia transação
+        conn.execute("BEGIN TRANSACTION")
+
+        # 2. Deleta os detalhes relacionados (sacramental ou batismo)
+        if ata_tipo == 'sacramental':
+            conn.execute("DELETE FROM sacramental WHERE ata_id = ?", (ata_id,))
+        elif ata_tipo == 'batismo':
+            conn.execute("DELETE FROM batismo WHERE ata_id = ?", (ata_id,))
+        
+        # 3. Deleta a ata principal (precisa ter ala_id para segurança)
+        conn.execute("DELETE FROM atas WHERE id = ? AND ala_id = ?", (ata_id, ala_id))
+
+        # Confirma a transação
+        conn.commit()
+        flash(f'Ata de {ata_tipo.capitalize()} (ID: {ata_id}) deletada com sucesso!', 'success')
+
+    except Exception as e:
+        conn.rollback()
+        flash(f'Erro ao deletar ata: {e}', 'error')
+        
+    finally:
+        conn.close()
+
+    # CORREÇÃO: O endpoint correto é 'listar_todas_atas'
+    return redirect(url_for('listar_todas_atas'))
 
 # Sistema de mensagens flash
 @app.context_processor

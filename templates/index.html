@@ -6,17 +6,16 @@
   <!-- CABEÇALHO COM USUÁRIO E CONFIGURAÇÕES -->
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0;">
     <div>
-      <h1 style="margin-bottom: 0.5rem; text-align: left;">Atas da Ala</h1>
+      <h1 style="margin-bottom: 0.5rem; text-align: left;">Dashboard</h1>
       <p class="subtitle" style="margin-bottom: 0; text-align: left;">Visualize e gerencie suas atas mensais</p>
     </div>
     <div style="text-align: right;">
       <div style="margin-bottom: 0.5rem;">
-        <strong><i class="fas fa-user"></i> Usuário:</strong> {{ session.username }}<br>
-        <small style="color: var(--gray-color);">Ala {{ session.username }}</small>
+        <strong><i class="fas fa-user"></i> Ala  {{ session.username }}<br></strong>
       </div>
       <div class="dropdown">
         <button class="btn btn-primary" onclick="toggleDropdown()">
-          <i class="fas fa-cog"></i> Configurações
+          <i class="fas fa-cog"></i> Opções
         </button>
         <div id="dropdownMenu" class="dropdown-content">
           <a href="{{ url_for('configuracoes') }}"><i class="fas fa-sliders-h"></i> Configurações Gerais</a>
@@ -30,7 +29,7 @@
      Bem-vindo e Ações Rápidas
   ===================== #}
   <div class="welcome-section" style="background: rgba(255,255,255,0.9); padding: 2rem; border-radius: var(--radius); margin-bottom: 2rem; text-align: center; border: 1px solid rgba(0,66,114,0.1);">
-    <h2 style="color: var(--accent-color); margin-bottom: 1rem;">Bem-vindo(a), {{ session.username }}!</h2>
+    <h2 style="color: var(--accent-color); margin-bottom: 1rem;">Bem-vindo, {{ session.username }}!</h2>
     <p style="color: var(--gray-color); margin-bottom: 1.5rem;">Sistema de Gestão de Atas das Alas</p>
     
     <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
@@ -54,6 +53,7 @@
     <div class="next-meeting">
         <h2><i class="fas fa-calendar-alt"></i> Próxima Reunião</h2>
         <p><strong>{{ proxima_reuniao.data_formatada }}</strong> — Reunião Sacramental</p>
+        <p></p>
         {% if proxima_reuniao.ata_existente %}
         <a href="{{ url_for('visualizar_ata', ata_id=proxima_reuniao.id) }}" class="btn btn-primary"><i class="fas fa-eye"></i> Ver Detalhes</a>
         {% else %}
