@@ -695,8 +695,9 @@ def listar_todas_atas():
     return render_template(
         "todas_atas.html",
         atas=atas,
-        discursantes_recentes=todos_discursantes[:20],  # Limitar a 20
-        temas_recentes=temas_formatados
+        discursantes_recentes=todos_discursantes[:20],
+        temas_recentes=temas_recentes,
+        hinos_recentes=get_hinos_recentes()
     )
 
 # Rota para editar uma ata existente

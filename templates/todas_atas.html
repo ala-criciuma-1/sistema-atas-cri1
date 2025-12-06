@@ -17,98 +17,75 @@
   </div>
 
   <div style="display: grid; grid-template-columns: 300px 1fr; gap: 2rem;">
-    
-    <!-- COLUNA ESQUERDA - INFORMAÇÕES -->
+    <!-- COLUNA ESQUERDA -->
     <div>
       <!-- DISCURSANTES RECENTES -->
-      <div class="info-card">
-        <h3><i class="fas fa-users"></i> Discursantes Recentes</h3>
-        <p style="color: var(--gray-color); font-size: 0.9rem; margin-bottom: 1rem;">
-          Últimos 3 meses ({{ discursantes_recentes|length }} discursantes)
+      {% if discursantes_recentes and discursantes_recentes|length > 0 %}
+      <div style="background: #f8f9fa; padding: 1.5rem; border-radius: var(--radius); border-left: 4px solid var(--accent-color); margin-bottom: 2rem;">
+        <h3 style="color: var(--accent-color); margin-bottom: 1rem;">📋 Discursantes Recentes</h3>
+        <p style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">
+          Discursantes dos últimos 3 meses:
         </p>
-        
-        {% if discursantes_recentes %}
         <div style="max-height: 400px; overflow-y: auto;">
-          <div class="discursantes-list">
+          <ul style="list-style: none; padding: 0; margin: 0;">
             {% for discursante in discursantes_recentes %}
-            <div class="discursante-item">
-              <div class="discursante-nome">{{ discursante.nome }}</div>
-              <div class="discursante-info">
-                <small><i class="fas fa-calendar"></i> {{ discursante.data }}</small>
-                <br>
-                <small style="color: var(--gold-color);"><i class="fas fa-tag"></i> {{ discursante.tema }}</small>
-              </div>
-            </div>
+            <li style="padding: 0.75rem; background: white; margin-bottom: 0.5rem; border-radius: 6px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-weight: 500;">{{ discursante.nome }}</span>
+              <small style="color: #666; font-size: 0.8rem;">{{ discursante.data }}</small>
+            </li>
             {% endfor %}
-          </div>
+          </ul>
         </div>
-        {% else %}
-        <div class="empty-state-small">
-          <i class="fas fa-users-slash"></i>
-          <p>Nenhum discursante encontrado</p>
-        </div>
-        {% endif %}
       </div>
+      {% endif %}
 
       <!-- TEMAS RECENTES -->
-      <div class="info-card" style="margin-top: 1.5rem;">
-        <h3><i class="fas fa-tags"></i> Temas Recentes</h3>
-        <p style="color: var(--gray-color); font-size: 0.9rem; margin-bottom: 1rem;">
-          Últimos 3 meses ({{ temas_recentes|length }} temas)
+      {% if temas_recentes and temas_recentes|length > 0 %}
+      <div style="background: #f8f9fa; padding: 1.5rem; border-radius: var(--radius); border-left: 4px solid #0052cc; margin-bottom: 2rem;">
+        <h3 style="color: #0052cc; margin-bottom: 1rem;">📌 Temas Recentes</h3>
+        <p style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">
+          Temas dos últimos 3 meses:
         </p>
-        
-        {% if temas_recentes %}
         <div style="max-height: 300px; overflow-y: auto;">
-          <div class="temas-list">
+          <ul style="list-style: none; padding: 0; margin: 0;">
             {% for tema in temas_recentes %}
-            <div class="tema-item">
-              <div class="tema-texto">{{ tema.tema }}</div>
-              <div class="tema-data">
-                <small><i class="fas fa-calendar"></i> {{ tema.data }}</small>
-              </div>
-            </div>
+            <li style="padding: 0.75rem; background: white; margin-bottom: 0.5rem; border-radius: 6px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-weight: 500;">{{ tema.tema }}</span>
+              <small style="color: #666; font-size: 0.8rem;">{{ tema.data }}</small>
+            </li>
             {% endfor %}
-          </div>
-        </div>
-        {% else %}
-        <div class="empty-state-small">
-          <i class="fas fa-tags"></i>
-          <p>Nenhum tema registrado</p>
-        </div>
-        {% endif %}
-
-        <div class="col-esquerda">
-        {% if not editar and hinos_recentes and hinos_recentes|length > 0 %}
-        <div style="background: #f8f9fa; padding: 1.5rem; border-radius: var(--radius); border-left: 4px solid var(--accent-color); margin-bottom: 2rem;">
-          <h3 style="color: var(--accent-color); margin-bottom: 1rem;">🎵 Hinos Recentes</h3>
-          <p style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">
-            Hinos tocados nas reuniões dos últimos 2 meses, agrupados por data:
-          </p>
-          <div style="max-height: 300px; overflow-y: auto;">
-            {% for ata_hinos in hinos_recentes %}
-            <div style="margin-bottom: 1rem; padding: 0.75rem; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
-              <p style="font-weight: 600; color: var(--accent-color); margin: 0 0 0.5rem 0; border-bottom: 1px solid #eee;">
-                Reunião de {{ ata_hinos.data }}
-              </p>
-              <ul style="list-style: none; padding-left: 0; margin: 0;">
-                {% for hino in ata_hinos.hinos %}
-                <li style="font-size: 0.9rem; margin-bottom: 0.25rem; display: flex; justify-content: space-between;">
-                  <span style="font-weight: 500;">{{ hino.tipo }}:</span> <span style="font-weight: 400;">{{ hino.nome }}</span>
-                </li>
-                {% endfor %}
-              </ul>
-            </div>
-            {% endfor %}
-          </div>
-          <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
-            <small style="color: #666;">
-              💡 Use estes hinos para referência.
-            </small>
-          </div>
-        </div>
-        {% endif %}
+          </ul>
         </div>
       </div>
+      {% endif %}
+
+      <!-- HINOS RECENTES -->
+      {% if hinos_recentes and hinos_recentes|length > 0 %}
+      <div style="background: #f8f9fa; padding: 1.5rem; border-radius: var(--radius); border-left: 4px solid #38c172; margin-bottom: 2rem;">
+        <h3 style="color: #38c172; margin-bottom: 1rem;">🎵 Hinos Recentes</h3>
+        <p style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">
+          Hinos tocados nas últimas reuniões:
+        </p>
+        <div style="max-height: 300px; overflow-y: auto;">
+          {% for ata_hinos in hinos_recentes %}
+          <div style="margin-bottom: 1rem; padding: 0.75rem; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
+            <p style="font-weight: 600; color: #38c172; margin: 0 0 0.5rem 0;">
+              Reunião de {{ ata_hinos.data }}
+            </p>
+            <ul style="list-style: none; padding-left: 0; margin: 0;">
+              {% for hino in ata_hinos.hinos %}
+              <li style="font-size: 0.9rem; margin-bottom: 0.25rem; display: flex; justify-content: space-between;">
+                <span style="font-weight: 500;">{{ hino.tipo }}:</span>
+                <span>{{ hino.nome }}</span>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
     </div>
 
     <!-- COLUNA DIREITA - LISTA DE ATAS -->
