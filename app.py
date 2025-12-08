@@ -17,6 +17,7 @@ from functions.pdf_exporters import exportar_pdf_bytes, exportar_sacramental_byt
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+import traceback
 
 app = Flask(__name__)
 
@@ -1226,69 +1227,183 @@ def visualizar_ata(ata_id):
 @login_required
 def exportar_pdf(ata_id):
     from functions.pdf_exporters import exportar_pdf_bytes
-    conn = get_db()
+    
+    conn = get_db() 
     try:
-        # Renderizar HTML
-        ata = conn.execute(
+        # Usamos um cursor explícito para maior robustez
+        cursor = conn.cursor() 
+        
+        # 1. Buscar a Ata
+        cursor.execute(
             "SELECT * FROM atas WHERE id=? AND ala_id=?", 
             (ata_id, session['user_id'])
-        ).fetchone()
+        )
+        ata = cursor.fetchone()
         
         if not ata:
             raise ValueError("Ata não encontrada")
         
         ata = dict(ata)
         
-        # Buscar detalhes conforme tipo
-        if ata["tipo"] == "sacramental":
-            detalhes = conn.execute("SELECT * FROM sacramental WHERE ata_id=?", (ata_id,)).fetchone()
-            if detalhes:
-                detalhes = dict(detalhes)
-                if detalhes.get('hinos'):
-                    try:
-                        hinos = json.loads(detalhes['hinos'])
-                        detalhes['hino_abertura'] = hinos[0] if len(hinos) > 0 else ''
-                        detalhes['hino_encerramento'] = hinos[1] if len(hinos) > 1 else ''
-                    except:
-                        pass
-                if detalhes.get('oracoes'):
-                    try:
-                        oracoes = json.loads(detalhes['oracoes'])
-                        detalhes['oracao_abertura'] = oracoes[0] if len(oracoes) > 0 else ''
-                        detalhes['oracao_encerramento'] = oracoes[1] if len(oracoes) > 1 else ''
-                    except:
-                        pass
-                if detalhes.get('discursantes'):
-                    try:
-                        detalhes['discursantes'] = json.loads(detalhes['discursantes'])
-                    except:
-                        detalhes['discursantes'] = []
-                if detalhes.get('anuncios'):
-                    try:
-                        detalhes['anuncios'] = json.loads(detalhes['anuncios'])
-                    except:
-                        detalhes['anuncios'] = []
-            else:
-                detalhes = {}
+        # =========================================================================
+        # CORREÇÃO: Buscar o Template Padrão (ID 1), pois a tabela templates 
+        # não possui a coluna ala_id.
+        # =========================================================================
+        cursor.execute(
+            # Anteriormente: "SELECT * FROM templates WHERE ala_id=? LIMIT 1"
+            "SELECT * FROM templates WHERE id=1 LIMIT 1" # Agora busca o template padrão (ID 1)
+        )
+        template = cursor.fetchone()
+        
+        if template:
+            template = dict(template)
         else:
-            detalhes = conn.execute("SELECT * FROM batismo WHERE ata_id=?", (ata_id,)).fetchone()
+            template = {}
+        
+        
+        # 4. Buscar detalhes conforme tipo (Lógica de deserialização mantida)
+        if ata["tipo"] == "sacramental":
+            cursor.execute("SELECT * FROM sacramental WHERE ata_id=?", (ata_id,))
+            detalhes = cursor.fetchone()
+            
             if detalhes:
-                detalhes = dict(detalhes)
-                if detalhes.get('batizados'):
+                detalhes_dict = dict(detalhes)
+                
+                # Deserialização de JSON
+                keys_to_load = ['hinos', 'oracoes', 'discursantes', 'anuncios', 
+                                'desobrigacoes', 'apoios', 'confirmacoes_batismo', 
+                                'apoio_membro_novo', 'bencao_crianca']
+
+                for key in keys_to_load:
+                    if detalhes_dict.get(key) and isinstance(detalhes_dict[key], str):
+                        try:
+                            detalhes_dict[key] = json.loads(detalhes_dict[key])
+                        except:
+                            if key in ['discursantes', 'anuncios', 'desobrigacoes', 'apoios', 'confirmacoes_batismo', 'apoio_membro_novo', 'bencao_crianca']:
+                                detalhes_dict[key] = []
+                            pass
+
+                # Tratamento específico de hinos e orações
+                if isinstance(detalhes_dict.get('hinos'), list):
+                    hinos = detalhes_dict['hinos']
+                    detalhes_dict['hino_abertura'] = hinos[0] if len(hinos) > 0 else ''
+                    detalhes_dict['hino_encerramento'] = hinos[1] if len(hinos) > 1 else ''
+                    
+                if isinstance(detalhes_dict.get('oracoes'), list):
+                    oracoes = detalhes_dict['oracoes']
+                    detalhes_dict['oracao_abertura'] = oracoes[0] if len(oracoes) > 0 else ''
+                    detalhes_dict['oracao_encerramento'] = oracoes[1] if len(oracoes) > 1 else ''
+                    
+                detalhes = detalhes_dict
+            else:
+                detalhes = {}
+        else: # Tipo batismo
+            cursor.execute("SELECT * FROM batismo WHERE ata_id=?", (ata_id,))
+            detalhes = cursor.fetchone()
+            if detalhes:
+                detalhes_dict = dict(detalhes)
+                if detalhes_dict.get('batizados'):
                     try:
-                        detalhes['batizados'] = json.loads(detalhes['batizados'])
+                        detalhes_dict['batizados'] = json.loads(detalhes_dict['batizados'])
                     except:
-                        detalhes['batizados'] = []
+                        detalhes_dict['batizados'] = []
+                detalhes = detalhes_dict
             else:
                 detalhes = {}
         
-        
-        # Converter para PDF
-        buffer, filename, mimetype = exportar_pdf_bytes(ata, detalhes, filename=f"ata_{ata_id}.pdf")
+        # 5. Converter para PDF
+        buffer, filename, mimetype = exportar_pdf_bytes(ata, detalhes, template, filename=f"ata_{ata_id}.pdf")
         return send_file(buffer, as_attachment=True, download_name=filename, mimetype=mimetype)
         
     except Exception as e:
+        print(f"======== ERRO CRÍTICO NA EXPORTAÇÃO DE PDF: {e} ========")
         flash(f"Erro ao exportar PDF: {str(e)}", "error")
+        return redirect(url_for("visualizar_ata", ata_id=ata_id))
+    finally:
+        conn.close()
+
+# Rota para exportar ata como PDF SIMPLES (SOMENTE CAMPOS/SEM TEXTOS)
+@app.route("/ata/exportar_simples/<int:ata_id>")
+@login_required
+def exportar_pdf_simples(ata_id):
+    from functions.pdf_exporters import exportar_pdf_bytes
+    
+    conn = get_db() 
+    try:
+        cursor = conn.cursor() 
+        
+        # 1. Buscar a Ata
+        cursor.execute(
+            "SELECT * FROM atas WHERE id=? AND ala_id=?", 
+            (ata_id, session['user_id'])
+        )
+        ata = cursor.fetchone()
+        
+        if not ata:
+            raise ValueError("Ata não encontrada")
+        
+        ata = dict(ata)
+        
+        # 2. NÃO BUSCAR O TEMPLATE: template = {} ou template = None
+        template = {} 
+        
+        # 3. Buscar detalhes conforme tipo (Lógica de deserialização mantida)
+        if ata["tipo"] == "sacramental":
+            cursor.execute("SELECT * FROM sacramental WHERE ata_id=?", (ata_id,))
+            detalhes = cursor.fetchone()
+            
+            if detalhes:
+                detalhes_dict = dict(detalhes)
+                
+                # Deserialização de JSON (simplificada)
+                keys_to_load = ['hinos', 'oracoes', 'discursantes', 'anuncios', 
+                                'desobrigacoes', 'apoios', 'confirmacoes_batismo', 
+                                'apoio_membro_novo', 'bencao_crianca']
+
+                for key in keys_to_load:
+                    if detalhes_dict.get(key) and isinstance(detalhes_dict[key], str):
+                        try:
+                            detalhes_dict[key] = json.loads(detalhes_dict[key])
+                        except:
+                            if key in ['discursantes', 'anuncios', 'desobrigacoes', 'apoios', 'confirmacoes_batismo', 'apoio_membro_novo', 'bencao_crianca']:
+                                detalhes_dict[key] = []
+                            pass
+
+                # Tratamento específico de hinos e orações
+                if isinstance(detalhes_dict.get('hinos'), list):
+                    hinos = detalhes_dict['hinos']
+                    detalhes_dict['hino_abertura'] = hinos[0] if len(hinos) > 0 else ''
+                    detalhes_dict['hino_encerramento'] = hinos[1] if len(hinos) > 1 else ''
+                    
+                if isinstance(detalhes_dict.get('oracoes'), list):
+                    oracoes = detalhes_dict['oracoes']
+                    detalhes_dict['oracao_abertura'] = oracoes[0] if len(oracoes) > 0 else ''
+                    detalhes_dict['oracao_encerramento'] = oracoes[1] if len(oracoes) > 1 else ''
+                    
+                detalhes = detalhes_dict
+            else:
+                detalhes = {}
+        else: # Tipo batismo
+            cursor.execute("SELECT * FROM batismo WHERE ata_id=?", (ata_id,))
+            detalhes = cursor.fetchone()
+            if detalhes:
+                detalhes_dict = dict(detalhes)
+                if detalhes_dict.get('batizados'):
+                    try:
+                        detalhes_dict['batizados'] = json.loads(detalhes_dict['batizados'])
+                    except:
+                        detalhes_dict['batizados'] = []
+                detalhes = detalhes_dict
+            else:
+                detalhes = {}
+        
+        # 4. Converter para PDF (template é vazio/None, resultando em "Sem Textos")
+        buffer, filename, mimetype = exportar_pdf_bytes(ata, detalhes, template, filename=f"ata_simples_{ata_id}.pdf")
+        return send_file(buffer, as_attachment=True, download_name=filename, mimetype=mimetype)
+        
+    except Exception as e:
+        print(f"======== ERRO CRÍTICO NA EXPORTAÇÃO DE PDF SIMPLES: {e} ========")
+        flash(f"Erro ao exportar PDF Simples: {str(e)}", "error")
         return redirect(url_for("visualizar_ata", ata_id=ata_id))
     finally:
         conn.close()
@@ -1345,25 +1460,32 @@ def exportar_sacramental_pdf(ata_id):
             detalhes = {}
         
         # Buscar template
-        template = conn.execute(
-            "SELECT * FROM templates WHERE nome = 'Sacramental Padrão'"
-        ).fetchone()
+        template = conn.execute("SELECT * FROM templates WHERE nome = 'Sacramental Padrão'").fetchone()
         
         if not template:
             template = conn.execute(
                 "SELECT * FROM templates WHERE tipo_template = 1"
             ).fetchone()
         
+        # =================================================================
+        # 🚨 CORREÇÃO APLICADA AQUI
+        # =================================================================
         if template:
             template = dict(template)
-        
-        
+        else:
+            # Se nenhuma busca funcionou, defina como um dicionário vazio
+            template = {} 
+        # =================================================================
+
         # Converter para PDF
         # Gerar PDF diretamente com dados (ReportLab)
         buffer, filename, mimetype = exportar_sacramental_bytes(ata, detalhes, template=template, filename=f"ata_sacramental_{ata_id}.pdf")
         return send_file(buffer, as_attachment=True, download_name=filename, mimetype=mimetype)
     
     except Exception as e:
+        print("======== ERRO CRÍTICO NA EXPORTAÇÃO DE PDF ========")
+        traceback.print_exc() # Isso irá imprimir o erro detalhado no console
+
         flash(f"Erro ao exportar PDF: {str(e)}", "error")
         return redirect(url_for("visualizar_ata", ata_id=ata_id))
     finally:
