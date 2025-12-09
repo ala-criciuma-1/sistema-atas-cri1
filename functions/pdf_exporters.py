@@ -9,7 +9,8 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
-import json # Import adicionado para garantir o funcionamento na seção AÇÕES
+import json 
+from typing import Optional
 
 # Tenta registrar DejaVuSans para acentuação; cai para Helvetica se não existir
 try:
@@ -63,6 +64,7 @@ def _format_date_for_pdf(value: str) -> str:
         return f"{parts[2]}/{parts[1]}/{parts[0]}"
     return value
 
+# A função espera um argumento 'text' do tipo 'str'
 def _replace_placeholders(text: str, ata: dict, detalhes: dict):
     if not text:
         return ""
@@ -258,7 +260,7 @@ def _add_section(canvas, y, title_style, body_style, title_text="", body_text=""
         
     return y
 
-def _create_pdf_from_ata(ata: dict, detalhes: dict, template: dict=None):
+def _create_pdf_from_ata(ata: dict, detalhes: dict, template: Optional[dict]=None):
     if detalhes is None:
         detalhes = {}
     out = io.BytesIO()
@@ -326,14 +328,17 @@ def _create_pdf_from_ata(ata: dict, detalhes: dict, template: dict=None):
 
     y = _check_space(c, y, MIN_SECTION_HEIGHT)
     
-    # CORREÇÃO: Ocultar o título se for PDF Simples
+    # CORREÇÃO Pylance (reportArgumentType - Linha 336): Garante que a string passada não é None
     if template:
         y = _section_title(c, "BOAS VINDAS", x, y)
         
-    if template and template.get('boas_vindas'):
-        boas = _replace_placeholders(template.get('boas_vindas'), ata, detalhes)
-        y = _draw_wrapped(c, boas, x, y, PAGE_WIDTH - 2*MARGIN)
-        y -= 18 # Ajuste do shift para 14pt (1.2 * 14 + ~2pt)
+        # Garante que 'boas_vindas' é uma string vazia se não existir ou se template for None
+        boas_vindas_text = template.get('boas_vindas', "")
+        
+        if boas_vindas_text:
+            boas = _replace_placeholders(boas_vindas_text, ata, detalhes)
+            y = _draw_wrapped(c, boas, x, y, PAGE_WIDTH - 2*MARGIN)
+            y -= 18 # Ajuste do shift para 14pt (1.2 * 14 + ~2pt)
 
     # =====================================
     # = ABERTURA (REFATORADO PARA NEGRITO)
@@ -382,8 +387,11 @@ def _create_pdf_from_ata(ata: dict, detalhes: dict, template: dict=None):
         ("bencao_crianca", "Bênção de Crianças"),
     ]
 
-    # Verifica se há template OU detalhes para qualquer campo de ação
-    has_actions = any(detalhes.get(key) or template.get(key) for key, _ in action_fields)
+    # CORREÇÃO Pylance (reportOptionalMemberAccess - Linha 387, 399): 
+    # Usa (template or {}) para garantir que .get() não é chamado em None
+    has_template_action = any((template or {}).get(key) for key, _ in action_fields)
+    has_detalhes_action = any(detalhes.get(key) for key, _ in action_fields)
+    has_actions = has_detalhes_action or has_template_action
 
     if has_actions:
         y = _check_space(c, y, MIN_SECTION_HEIGHT)
@@ -395,7 +403,8 @@ def _create_pdf_from_ata(ata: dict, detalhes: dict, template: dict=None):
 
         for key, label in action_fields:
             detalhe_itens = detalhes.get(key)
-            template_text = template.get(key, "") 
+            # template_text = template.get(key, "") # Linha 452: Já estava correta
+            template_text = (template.get(key, "") if template else "") # Garante que template.get só é chamado se template não for None
             
             if detalhe_itens or template_text:
                 
@@ -405,6 +414,7 @@ def _create_pdf_from_ata(ata: dict, detalhes: dict, template: dict=None):
                 # 2. Adiciona o texto do Template (Itálico) - Usará o 14pt do BodyStandard
                 if template_text:
                     try:
+                        # CORREÇÃO Pylance (reportArgumentType - Linha 470): template_text já é garantido ser str
                         final_template_text = _replace_placeholders(template_text, ata, detalhes={}) 
                         final_template_text = str(final_template_text).replace('\n', '<br/>').replace('\r', '') 
                         
@@ -463,11 +473,14 @@ def _create_pdf_from_ata(ata: dict, detalhes: dict, template: dict=None):
         
     sacramento_data = []
     
-    # Nota: A parte do template (sacramento) não pode ter o prefixo negrito sem refatorar _draw_wrapped.
-    if template and template.get('sacramento'):
-        y = _check_space(c, y, MIN_SECTION_HEIGHT)
-        sac = _replace_placeholders(template.get('sacramento'), ata, detalhes)
-        sacramento_data.append(sac)
+    # CORREÇÃO Pylance (reportArgumentType - Linha 494): Garante que a string passada não é None
+    if template:
+        sacramento_text = template.get('sacramento', "") # Garante string vazia se template for None ou chave inexistente
+        
+        if sacramento_text:
+            y = _check_space(c, y, MIN_SECTION_HEIGHT)
+            sac = _replace_placeholders(sacramento_text, ata, detalhes)
+            sacramento_data.append(sac)
         
     if sacramento_data:
         y = _check_space(c, y, MIN_SECTION_HEIGHT)
@@ -489,10 +502,13 @@ def _create_pdf_from_ata(ata: dict, detalhes: dict, template: dict=None):
     if template:
         y = _section_title(c, "MENSAGENS", x, y)
         
-    if template and template.get('mensagens'):
-        msg_text = _replace_placeholders(template.get('mensagens'), ata, detalhes)
-        y = _draw_wrapped(c, msg_text, x, y, PAGE_WIDTH - 2*MARGIN)
-        y -= 10 
+    # CORREÇÃO Pylance (reportArgumentType - Linha 527): Garante que a string passada não é None
+    if template:
+        mensagens_text = template.get('mensagens', "") # Garante string vazia
+        if mensagens_text:
+            msg_text = _replace_placeholders(mensagens_text, ata, detalhes)
+            y = _draw_wrapped(c, msg_text, x, y, PAGE_WIDTH - 2*MARGIN)
+            y -= 10 
 
     discursantes = detalhes.get('discursantes') or []
     if isinstance(discursantes, (list,tuple)) and discursantes:
@@ -522,10 +538,13 @@ def _create_pdf_from_ata(ata: dict, detalhes: dict, template: dict=None):
         y -= 10 
 
     # 1. Texto de Encerramento do Template
-    if template and template.get('encerramento'):
-        enc_text = _replace_placeholders(template.get('encerramento'), ata, detalhes)
-        y = _draw_wrapped(c, enc_text, x, y, PAGE_WIDTH - 2*MARGIN)
-        y -= 18 # Espaçamento após o texto do encerramento (ajustado para 14pt)
+    # CORREÇÃO Pylance (reportArgumentType - Linha 562): Garante que a string passada não é None
+    if template:
+        encerramento_text = template.get('encerramento', "") # Garante string vazia
+        if encerramento_text:
+            enc_text = _replace_placeholders(encerramento_text, ata, detalhes)
+            y = _draw_wrapped(c, enc_text, x, y, PAGE_WIDTH - 2*MARGIN)
+            y -= 18 # Espaçamento após o texto do encerramento (ajustado para 14pt)
 
     # 2. Hino de Encerramento (Usando _draw_labeled_line)
     if detalhes.get('hino_encerramento'):
@@ -541,30 +560,12 @@ def _create_pdf_from_ata(ata: dict, detalhes: dict, template: dict=None):
     # = FOOTER 
     # =====================================
     
-    # Nota: Em ReportLab Canvas, se `c.showPage()` for chamada dentro das funções auxiliares
-    # (_draw_wrapped, _check_space), a função _draw_footer deve ser chamada lá também 
-    # para numeração correta em todas as páginas. Mas, corrigindo o bloco final:
-
-    # c.setLineWidth(0.5)
-    # c.setStrokeColor(colors.HexColor("#e2e8f0"))
-    # c.line(MARGIN, MARGIN + 10, PAGE_WIDTH - MARGIN, MARGIN + 10)
-
-    # c.setFont(DEFAULT_FONT, 10) 
-    # c.setFillColor(colors.HexColor("#718096"))
-
-    # # 💥 Nome da Ala Dinâmico
-    # footer_text = f"Sistema de Atas - {ala_nome}"
-    # c.drawString(MARGIN, MARGIN + 2, footer_text)
-
-    # # 💥 Número da Página Dinâmico
-    # # c.getPageNumber() retorna o número da página atual (ex: 1, 2, 3...)
-    # page_number = c.getPageNumber()
-    # c.drawRightString(PAGE_WIDTH - MARGIN, MARGIN + 2, f"Página {page_number}")
-
+    # Nota: O bloco do footer está comentado na sua versão original. 
+    
     # c.showPage()
-    # c.save()
-    # out.seek(0)
-    # return out
+    c.save()
+    out.seek(0)
+    return out
 
 # API pública
 def exportar_pdf_bytes(ata, detalhes=None, template=None, filename="ata.pdf"):
