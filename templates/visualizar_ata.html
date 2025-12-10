@@ -587,12 +587,15 @@ document.getElementById('modalExclusao').addEventListener('click', function(e) {
     btnCom.addEventListener('click', function(){ setView('com'); });
 })();
 
-/* Base messages passadas pelo servidor (fazer fallback vazio quando ausente) */
-const discursanteBaseMsgs = {
-  '1': {{ discursante_1_text | default('', true) | tojson }},
-  '2': {{ discursante_2_text | default('', true) | tojson }},
-  '3': {{ discursante_3_text | default('', true) | tojson }}
-};
+/* Base messages passadas pelo servidor (fazer fallback vazio quando ausente)
+   Render into a valid JS object using tojson so the editor's JS parser won't choke on Jinja syntax.
+*/
+const discursanteBaseMsgs = {{ {
+  "1": discursante_1_text|default(''),
+  "2": discursante_2_text|default(''),
+  "3": discursante_3_text|default('')
+} | tojson }};
+
 
 function getTemaFromDOM() {
     const el = document.querySelector('.tema-text');
