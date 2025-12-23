@@ -162,3 +162,7 @@ CREATE INDEX IF NOT EXISTS idx_unidades_estaca_id ON unidades(estaca_id);
 
 COMMIT;
 PRAGMA foreign_keys = OFF;
+
+ALTER TABLE unidades ADD COLUMN recepcionista TEXT;
+ALTER TABLE unidades ADD COLUMN pianista TEXT;
+ALTER TABLE unidades ADD COLUMN regente_musica TEXT;

@@ -13,8 +13,8 @@
     <input type="hidden" name="editar" value="{{ editar }}">
     {% endif %}
 
-    <!-- COLUNA ESQUERDA - DISCURSANTES E TEMAS RECENTES -->
     <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem;">
+      <!-- COLUNA ESQUERDA - DISCURSANTES E TEMAS RECENTES -->
       <div>
         {% if not editar and discursantes_recentes and discursantes_recentes|length > 0 %}
         <div style="background: #f8f9fa; padding: 1.5rem; border-radius: var(--radius); border-left: 4px solid var(--accent-color); margin-bottom: 2rem;">
@@ -108,6 +108,7 @@
           </div>
           <div class="section-content">
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+              <!-- Presidido por -->
               <div>
                 <label style="display:block; font-size:0.9rem; margin-bottom:0.3rem;">Presidido por</label>
 
@@ -140,6 +141,7 @@
                 <input type="text" id="presidido_outro" placeholder="Digite o nome se 'Outro'..." style="display:none; margin-top:0.5rem; width:100%; padding:0.5rem;">
                 <input type="hidden" name="presidido" id="presidido_hidden" value="{{ dados.presidido or '' }}">
               </div>
+              <!-- Dirigido por -->
               <div>
                 <label style="display:block; font-size:0.9rem; margin-bottom:0.3rem;">Dirigido por</label>
 
@@ -172,18 +174,50 @@
                 <input type="text" id="dirigido_outro" placeholder="Digite o nome se 'Outro'..." style="display:none; margin-top:0.5rem; width:100%; padding:0.5rem;">
                 <input type="hidden" name="dirigido" id="dirigido_hidden" value="{{ dados.dirigido or '' }}">
               </div>
+
               <div>
-                <label style="display:block; font-size:0.9rem; margin-bottom:0.3rem;">Como recepcionista(s)</label>
-                <input type="text" name="recepcionistas" value="{{ dados.recepcionistas or '' }}">
+                <label style="display:block; font-size:0.9rem; margin-bottom:0.3rem;">Recepcionista</label>
+                
+                {% set recepcionista = unidade.recepcionista or '' %}
+                <select id="recepcionistas_select" style="min-width:220px;">
+                  {% if recepcionista %}
+                  <option value="{{ recepcionista }}" {% if dados.recepcionista == recepcionista %}selected{% endif %}>{{ recepcionista }}</option>
+                  {% endif %}
+                  <option value="__outro__" {% if dados.recepcionista and dados.recepcionista != recepcionista %}selected{% endif %}>Outro...</option>
+                </select>
+
+                <input type="text" id="recepcionista_outro" placeholder="Digite o nome se 'Outro'..." style="display:none; margin-top:0.5rem; width:100%; padding:0.5rem;">
+                <input type="hidden" name="recepcionista" id="recepcionista_hidden" value="{{ dados.recepcionista or '' }}">
               </div>
               <div>
                 <label style="display:block; font-size:0.9rem; margin-bottom:0.3rem;">Pianista</label>
-                <input type="text" name="pianista" value="{{ dados.pianista or '' }}">
+                
+                {% set pianista = unidade.pianista or '' %}
+                <select id="pianistas_select" style="min-width:220px;">
+                  {% if pianista %}
+                  <option value="{{ pianista }}" {% if dados.pianista == pianista %}selected{% endif %}>{{ pianista }}</option>
+                  {% endif %}
+                  <option value="__outro__" {% if dados.pianista and dados.pianista != pianista %}selected{% endif %}>Outro...</option>
+                </select>
+
+                <input type="text" id="pianista_outro" placeholder="Digite o nome se 'Outro'..." style="display:none; margin-top:0.5rem; width:100%; padding:0.5rem;">
+                <input type="hidden" name="pianista" id="pianista_hidden" value="{{ dados.pianista or '' }}">
               </div>
               <div>
                 <label style="display:block; font-size:0.9rem; margin-bottom:0.3rem;">Regente de Música</label>
-                <input type="text" name="regente_musica" value="{{ dados.regente_musica or '' }}">
+                
+                {% set regente_musica = unidade.regente_musica or '' %}
+                <select id="regentes_select" style="min-width:220px;">
+                  {% if regente_musica %}
+                  <option value="{{ regente_musica }}" {% if dados.regente_musica == regente_musica %}selected{% endif %}>{{ regente_musica }}</option>
+                  {% endif %}
+                  <option value="__outro__" {% if dados.regente_musica and dados.regente_musica != regente_musica %}selected{% endif %}>Outro...</option>
+                </select>
+
+                <input type="text" id="regente_outro" placeholder="Digite o nome se 'Outro'..." style="display:none; margin-top:0.5rem; width:100%; padding:0.5rem;">
+                <input type="hidden" name="regente_musica" id="regente_hidden" value="{{ dados.regente_musica or '' }}">
               </div>
+
               <div style="grid-column: 1 / -1;">
                 <label style="display:block; font-size:0.9rem; margin-bottom:0.3rem;">
                   <i class="fas fa-tag"></i> Tema da Reunião (Opcional)
@@ -706,6 +740,117 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   })();
+
+  // RECEPCIONISTA
+  const recSelect = document.getElementById('recepcionistas_select');
+  const recHidden = document.getElementById('recepcionista_hidden');
+  const recOutro = document.getElementById('recepcionista_outro');
+
+  function syncRecepcionista() {
+    const v = recSelect.value;
+    if (v === '__outro__') {
+      recOutro.style.display = 'block';
+      recHidden.value = recOutro.value || '';
+    } else {
+      recOutro.style.display = 'none';
+      recHidden.value = v;
+    }
+  }
+  recSelect && recSelect.addEventListener('change', syncRecepcionista);
+  recOutro && recOutro.addEventListener('input', () => recHidden.value = recOutro.value);
+
+  (function initRec(){
+    const hv = recHidden.value || '';
+    let found = false;
+    if (recSelect) {
+      for (let i = 0; i < recSelect.options.length; i++) {
+        if (recSelect.options[i].value === hv) { recSelect.selectedIndex = i; found = true; break; }
+      }
+      if (!found && hv) {
+        recSelect.value = '__outro__';
+        recOutro.style.display = 'block';
+        recOutro.value = hv;
+        recHidden.value = hv;
+      } else {
+        syncRecepcionista();
+      }
+    }
+  })();
+
+  // PIANISTA
+  const pianSelect = document.getElementById('pianistas_select');
+  const pianHidden = document.getElementById('pianista_hidden');
+  const pianOutro = document.getElementById('pianista_outro');
+
+  function syncPianista() {
+    const v = pianSelect.value;
+    if (v === '__outro__') {
+      pianOutro.style.display = 'block';
+      pianHidden.value = pianOutro.value || '';
+    } else {
+      pianOutro.style.display = 'none';
+      pianHidden.value = v;
+    }
+  }
+
+  pianSelect && pianSelect.addEventListener('change', syncPianista);
+  pianOutro && pianOutro.addEventListener('input', () => pianHidden.value = pianOutro.value);
+  
+  (function initPian(){
+    const hv = pianHidden.value || '';
+    let found = false;
+    if (pianSelect) {
+      for (let i = 0; i < pianSelect.options.length; i++) {
+        if (pianSelect.options[i].value === hv) { pianSelect.selectedIndex = i; found = true; break; }
+      }
+      if (!found && hv) {
+        pianSelect.value = '__outro__';
+        pianOutro.style.display = 'block';
+        pianOutro.value = hv;
+        pianHidden.value = hv;
+      } else {
+        syncPianista();
+      }
+    }
+  })();
+
+  // REGENTE DE MÚSICA
+  const regSelect = document.getElementById('regentes_select');
+  const regHidden = document.getElementById('regente_hidden');
+  const regOutro = document.getElementById('regente_outro');
+
+  function syncRegente() {
+    const v = regSelect.value;
+    if (v === '__outro__') {
+      regOutro.style.display = 'block';
+      regHidden.value = regOutro.value || '';
+    } else {
+      regOutro.style.display = 'none';
+      regHidden.value = v;
+    }
+  }
+
+  regSelect && regSelect.addEventListener('change', syncRegente);
+  regOutro && regOutro.addEventListener('input', () => regHidden.value = regOutro.value);
+
+  (function initReg(){
+    const hv = regHidden.value || '';
+    let found = false;
+    if (regSelect) {
+      for (let i = 0; i < regSelect.options.length; i++) {
+        if (regSelect.options[i].value === hv) { regSelect.selectedIndex = i; found = true; break; }
+      }
+      if (!found && hv) {
+        regSelect.value = '__outro__';
+        regOutro.style.display = 'block';
+        regOutro.value = hv;
+        regHidden.value = hv;
+      } else {
+        syncRegente();
+      }
+    }
+  })();
+
 });
 </script>
 

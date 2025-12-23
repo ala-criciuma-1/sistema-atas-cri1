@@ -411,10 +411,10 @@ def salvar_configuracoes_ala():
     bispo = request.form.get("bispo")
     primeiro_conselheiro = request.form.get("primeiro_conselheiro")
     segundo_conselheiro = request.form.get("segundo_conselheiro")
+    recepcionista = request.form.get("recepcionista")
+    pianista = request.form.get("pianista")
+    regente_musica = request.form.get("regente_musica")
     horario = request.form.get("horario")
-    # O template atualmente envia um campo 'estaca' (string), mas a tabela usa estaca_id.
-    # Para evitar alterações de schema/ID incorretos, não alteraremos estaca_id aqui.
-    # Se quiser atualizar estaca_id a partir do front, eu posso ajustar depois.
     
     # Verificar se já existe registro para esta ala
     unidade_existente = conn.execute(
@@ -426,15 +426,15 @@ def salvar_configuracoes_ala():
         # Atualizar - não tocar em estaca_id para evitar inconsistências
         conn.execute("""
             UPDATE unidades
-            SET nome = ?, bispo = ?, primeiro_conselheiro = ?, segundo_conselheiro = ?, horario = ?
+            SET nome = ?, bispo = ?, primeiro_conselheiro = ?, segundo_conselheiro = ?, horario = ?, recepcionista = ?, pianista = ?, regente_musica = ?
             WHERE ala_id = ?
-        """, (nome_ala, bispo, primeiro_conselheiro, segundo_conselheiro, horario, session['user_id']))
+        """, (nome_ala, bispo, primeiro_conselheiro, segundo_conselheiro, horario, recepcionista, pianista, regente_musica, session['user_id']))
     else:
         # Inserir - estaca_id usará valor default definido no schema (DEFAULT 1)
         conn.execute("""
-            INSERT INTO unidades (ala_id, nome, bispo, primeiro_conselheiro, segundo_conselheiro, horario)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (session['user_id'], nome_ala, bispo, primeiro_conselheiro, segundo_conselheiro, horario))
+            INSERT INTO unidades (ala_id, nome, bispo, primeiro_conselheiro, segundo_conselheiro, horario, recepcionista, pianista, regente_musica)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (session['user_id'], nome_ala, bispo, primeiro_conselheiro, segundo_conselheiro, horario, recepcionista, pianista, regente_musica))
 
     conn.commit()
     conn.close()
@@ -586,6 +586,9 @@ def apagar_template(template_id):
             'message': 'Erro interno ao apagar template'
         }), 500
 
+# ==================================================================
+# Rotas de Atas
+# ==================================================================
 
 # Página Inicial com lista de atas
 @app.route('/index')
@@ -903,7 +906,7 @@ def form_ata():
             detalhes = {
                 "presidido": request.form.get("presidido", ""),
                 "dirigido": request.form.get("dirigido", ""),
-                "recepcionistas": request.form.get("recepcionistas", ""),
+                "recepcionistas": request.form.get("recepcionista", ""),
                 "tema": request.form.get("tema", ""), 
                 "pianista": request.form.get("pianista", ""),
                 "regente_musica": request.form.get("regente_musica", ""),

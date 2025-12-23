@@ -104,6 +104,18 @@
             <label for="segundo_conselheiro"><i class="fas fa-user-friends"></i> Segundo Conselheiro:</label>
             <input type="text" id="segundo_conselheiro" name="segundo_conselheiro" value="{{ unidade.segundo_conselheiro or '' }}" placeholder="Nome do segundo conselheiro">
           </div>
+          <div>
+            <label for="recepcionista"><i class="fas fa-user-friends"></i> Recepcionista:</label>
+            <input type="text" id="recepcionista" name="recepcionista" value="{{ unidade.recepcionista or '' }}" placeholder="Nome do recepcionista">
+          </div>
+          <div>
+            <label for="pianista"><i class="fas fa-user-friends"></i> Pianista:</label>
+            <input type="text" id="pianista" name="pianista" value="{{ unidade.pianista or '' }}" placeholder="Nome do pianista">
+          </div>
+          <div>
+            <label for="regente_musica"><i class="fas fa-user-friends"></i> Regente de Música:</label>
+            <input type="text" id="regente_musica" name="regente_musica" value="{{ unidade.regente_musica or '' }}" placeholder="Nome do regente de música">
+          </div>
         </div>
         <button type="submit" class="btn btn-primary">
           <i class="fas fa-save"></i> Salvar Configurações
@@ -555,7 +567,7 @@ function criarNovoTemplate() {
         <textarea name="boas_vindas" rows="3" placeholder="Mensagem de boas vindas..." style="width:100%; padding:0.75rem; border-radius:var(--radius); border:1px solid #ccc;"></textarea>
       </div>
       
-      <!-- Adicione os outros campos conforme necessário -->
+      <!-- funcionalidade em desenvolvimento -->
       
       <div style="display: flex; gap: 1rem; justify-content: flex-end;">
         <button type="button" onclick="fecharModal()" class="btn-action" style="background: #999;">Cancelar</button>
